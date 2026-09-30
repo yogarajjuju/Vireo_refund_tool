@@ -1,165 +1,73 @@
-# Vireo — 3-Minute Screen Recording Script
+# Submission Form — Final Draft
 
-## Before recording
+## What did you build, and what business outcome does it move?
 
-Open two windows side-by-side:
+A small reproducible Python/pandas refund-reconciliation CLI. It deduplicates migration re-imports, converts legacy Freshdesk money into rupees, produces monthly refund totals by reason and resolving agent, validates the migration conversion, and adds order-level/control checks.
 
-* **Terminal:** `~/Downloads/vireo_refund_tool_final`
-* **VS Code/Text editor:** project folder
+Primary business scenario: reduce refund incidence from the **highest quarterly rate in the supplied data, 22.0% in Q3 2025, to 15%**. At 650 tickets/week and the observed average refund value, this models approximately **₹16.9 lakh of gross refund value avoided per quarter**, assuming average refund value stays constant.
 
-Start with the terminal visible.
+A separate control opportunity is **166 refund+replacement cases worth ₹5.74 lakh of refund value and ₹8.71 lakh of combined cost**.
 
----
+## What does one run cost, and what would a month cost?
 
-## 0:00–0:20 — Introduce the project
+₹0 in paid API/model calls. The runtime is local Python/pandas.
 
-### Show
+650 tickets/week × 4.33 weeks/month ≈ 2,815 tickets/month. Paid model/API calls = 0, so API/model spend = **₹0/month**.
 
-Open `README.md` briefly.
+## How do you know it works?
 
-### Say
+Sample: **12,238 raw ticket rows → 11,600 unique tickets**. There are **638 duplicate ticket IDs**, all cross-source migration pairs. After legacy `/100`, 638/638 duplicate pairs reconcile with **zero normalized mismatches**.
 
-> “Here is my Vireo refund-reconciliation tool. The goal was to reconcile the refund data and provide monthly refund reporting by reason and agent, while investigating the mismatch between Finance and the helpdesk.”
+**2,340 refund tickets** are retained in a traceable case-level output. **2,330/2,340 (99.6%)** link to an order using exact order ID or nearest-prior customer+SKU fallback.
 
----
+Three linked cases have refund value above recorded order value. They are explicitly flagged for human review rather than treated as tool errors.
 
-## 0:20–0:45 — Explain the data problem
+## Did you change, narrow, or push back on the client's ask?
 
-### Show
+Yes. I reframed “who is giving away money” into “where is refund value coming from and where are the policy/control exceptions?” Returns Desk is intentionally responsible for most refunds, so raw agent totals are not treated as misconduct evidence.
 
-Open the terminal and run:
+I also resolved the Finance/helpdesk disagreement as a data-reconciliation problem before reporting financial totals.
 
-```bash
-python analyze.py --data data --out output
-```
+## What is wrong with what you are handing us?
 
-### Say
+* Three refund cases exceed recorded order value and require human review.
+* Ten refund cases cannot be linked to an order from the supplied order data using the defined matching rules.
+* The 15% target is a scenario, not a forecast.
+* Free-text interpretation is not automated into accounting decisions.
+* Agent totals can still be misread without team/volume context.
 
-> “The data contains records from both the current and legacy helpdesk systems. I found 638 duplicate ticket IDs across the source systems. The policy states that legacy monetary values use a different unit, so the tool normalizes those values before reconciliation. All 638 duplicate pairs reconcile with zero normalized mismatches.”
+## What did you deliberately leave out, and why?
 
----
+I left out an LLM classifier for the financial total and a large dashboard. The requested financial report is deterministic; adding an LLM would add cost and ambiguity without improving reconciliation. I prioritized traceability and validation.
 
-## 0:45–1:10 — Show the main result
+## Anything you built or found that nobody asked for?
 
-### Show
+* Refund + replacement control check.
+* Order-level reconciliation and refund-above-order-value flags.
+* Migration duplicate audit explaining the Finance/helpdesk discrepancy.
 
-Run:
+## What did you use AI for?
 
-```bash
-column -s, -t < output/quarterly_overview.csv
-```
+I used ChatGPT (GPT-5.6 Luna) as a coding/reasoning assistant to inspect the pack, design reconciliation logic, challenge assumptions and structure the report.
 
-### Say
+## Three-minute recording
 
-> “The reconciled dataset contains 11,600 unique tickets from 12,238 raw rows. There are 2,340 refund tickets totaling approximately 67.1 lakh rupees. The highest quarterly refund rate in the supplied data is 22.0% in Q3 2025.”
+https://drive.google.com/file/d/1AOSu5RvBm5ebhYYzOwQB5J6N5k8L1tga/view?usp=sharing
 
----
+## Your Public Google Drive Link
 
-## 1:10–1:35 — Show the refund drivers
+https://drive.google.com/file/d/1AOSu5RvBm5ebhYYzOwQB5J6N5k8L1tga/view?usp=sharing
 
-### Show
+## Someone picks this up on Monday and you are unreachable. The three things they need to know.
 
-Run:
+1. Run `python analyze.py --data data --out output`.
+2. Never sum raw refund amounts across both source systems; deduplicate and normalize legacy money first.
+3. Board number: **₹67.10 lakh across the 18-month reconciled dataset**.
 
-```bash
-column -s, -t < output/refunds_by_month_reason.csv | head -20
-```
+## Honest hours spent
 
-### Say
+5
 
-> “The largest refund reason is GW-OTHER, with about 29.1 lakh rupees, representing approximately 43.3% of total refund value. RETURN-QC-OK and DUP-PAYMENT are the next major categories. This gives the business a focused area to investigate rather than simply looking at individual agent totals.”
+## Github Repo Link
 
----
-
-## 1:35–2:00 — Show order validation
-
-### Show
-
-Run:
-
-```bash
-column -s, -t < output/validation_report.csv
-```
-
-### Say
-
-> “The tool also validates refunds against the supplied order data. 2,330 of the 2,340 refund cases link to an order, giving a 99.6% match rate. Three linked cases have refund values above their recorded order value, so I flag them for human review instead of silently changing the data.”
-
----
-
-## 2:00–2:25 — Show the policy control finding
-
-### Show
-
-Run:
-
-```bash
-python - <<'PY'
-import pandas as pd
-
-df = pd.read_csv("output/refund_cases.csv")
-x = df[df["replacement_issued"].eq("Y")]
-
-print("Refund + replacement cases:", len(x))
-print("Refund value:", x["refund_inr_clean"].sum())
-PY
-```
-
-### Say
-
-> “I also added a control check for refunds and replacements. There are 166 cases where both outcomes were recorded, involving 5.74 lakh rupees of refund value. The policy says a customer should not receive both a refund and replacement for the same order, so these cases form a concrete review queue.”
-
----
-
-## 2:25–2:45 — Show the business recommendation
-
-### Show
-
-Open:
-
-```text
-BOARD_MEMO.md
-```
-
-### Say
-
-> “The recommended actions are to review GW-OTHER cases, investigate the 166 refund-plus-replacement cases, add a refund-replacement control check, and track the refund rate monthly. A reduction from the approximately 22% quarterly benchmark toward 15% represents a modeled gross opportunity of about 16.9 lakh rupees per quarter.”
-
----
-
-## 2:45–3:00 — Show what was deliberately left out
-
-### Show
-
-Open:
-
-```text
-SUBMISSION_FORM_DRAFT.md
-```
-
-or `README.md`.
-
-### Say
-
-> “I deliberately kept the financial calculation deterministic instead of using an LLM for accounting decisions, and I did not build a large dashboard. The priority was reproducibility, traceability and validation. The 15% target and 16.9 lakh figure are a management scenario, not a forecast. The project can be reproduced from the README on a clean machine.”
-
----
-
-# Recording checklist
-
-Before starting:
-
-* [ ] Terminal is in `vireo_refund_tool_final`
-* [ ] Virtual environment is available
-* [ ] `python analyze.py --data data --out output` works
-* [ ] `BOARD_MEMO.md` is saved
-* [ ] `SUBMISSION_FORM_DRAFT.md` is saved
-* [ ] No personal information is visible on screen
-* [ ] Recording is under 3 minutes
-* [ ] Voice is clear
-
-## Important
-
-Do not spend time scrolling through the entire CSV files.
-
-Show the **commands → outputs → business conclusion**. The reviewer needs to see that the tool works and that you understand why the findings matter.
+https://github.com/yogarajjuju/Vireo_refund_tool
